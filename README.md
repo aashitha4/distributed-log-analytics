@@ -2,12 +2,35 @@
 
 Monorepo implementation of a distributed log analytics platform using React, Node.js, Spark, MinIO, and MongoDB.
 
+## Demo
+
+- Upload access logs from the frontend dashboard.
+- Backend streams file directly to MinIO (no local disk staging).
+- Spark job computes per-minute traffic and anomaly signals.
+- Processed results are written to MongoDB and visualized on charts + alerts table.
+
+### Quick smoke run
+
+1. Start services (sections below).
+2. Upload `data/sample_nginx_logs.txt` or `data/sample_app_logs.json`.
+3. Click **Upload and Analyze**.
+4. Refresh dashboard to view `Traffic over Time`, status distribution, and anomalies.
+
 ## Architecture
 
 - **Frontend (`frontend/`)**: Upload logs and visualize analytics/anomalies.
 - **Backend (`backend/`)**: Streams uploads to MinIO, triggers Spark, serves results from MongoDB.
-- **Spark Jobs (`spark-jobs/`)**: Parses logs, aggregates metrics, detects anomalies with MLlib, writes to MongoDB.
+- **Spark Jobs (`spark-jobs/`)**: Parses logs, aggregates metrics, detects anomalies via percentile-based outlier logic, writes to MongoDB.
 - **Docker Infra (`docker/`)**: MongoDB + MinIO + Spark Master/Workers for local distributed execution.
+
+## System Flow
+
+1. User uploads a log file from React frontend.
+2. Node.js API stores raw file in MinIO bucket `raw-logs`.
+3. API triggers Spark pipeline (`Livy` or `spark-submit` fallback).
+4. Spark parses + aggregates logs and flags anomalies.
+5. Spark writes `log_stats` and `anomalies` into MongoDB.
+6. Dashboard fetches results using `/api/results` and `/api/anomalies`.
 
 ## Folder Layout
 
@@ -90,10 +113,17 @@ bash docker/spark-submit.sh uploads/sample_nginx_logs.txt
 
 ## Spark Pipeline Details
 
-- `jobs/log_parser.py`: Regex parsing for Nginx/Apache-style access logs
+- `jobs/log_parser.py`: Regex parsing for Nginx/Apache logs + JSON log parser path
 - `jobs/stats_aggregator.py`: Per-minute traffic + status distribution
-- `jobs/anomaly_detector.py`: K-Means-based outlier detection with distance threshold
+- `jobs/anomaly_detector.py`: Statistical outlier detection (95th percentile thresholds)
 - `main.py`: Orchestrates read (`s3a://raw-logs/...`) -> transform -> write
+
+## Resume Highlights
+
+- Distributed data pipeline with Spark cluster + object storage + NoSQL sink.
+- Production-style decoupling: upload service, compute service, and dashboard service.
+- Configurable runtime via environment variables (Docker + backend + frontend).
+- Supports both text access logs and JSON app logs.
 
 ## Notes
 
