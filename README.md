@@ -58,11 +58,9 @@ docker compose -f docker/docker-compose.yml up -d
 Optional: copy `docker/.env.example` values into a root-level `.env` file to override ports/images/credentials without editing compose YAML.
 
 Verify:
-- Spark UI: http://localhost:8080
-- MinIO Console: http://localhost:9001 (`minioadmin` / `minioadmin`)
-- MongoDB: `mongodb://localhost:27017`
-
-The `raw-logs` bucket is auto-created by `minio-init`.
+- Containers are healthy via `docker compose -f docker/docker-compose.yml ps`
+- MinIO bucket initialization is handled by the `minio-init` service
+- Service ports and credentials come from your environment configuration
 
 ## 2) Backend Setup
 
@@ -94,7 +92,7 @@ copy .env.example .env
 npm run dev
 ```
 
-Frontend runs at http://localhost:5173.
+Frontend URL is defined by your Vite runtime configuration and environment settings.
 
 ## 4) Run Spark Pipeline
 
