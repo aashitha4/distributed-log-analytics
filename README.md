@@ -1,45 +1,55 @@
 # Distributed Log Analytics and Anomaly Detection Platform
 
-Monorepo implementation of a distributed log analytics platform using React, Node.js, Spark, MinIO, and MongoDB.
+An end-to-end distributed analytics system that ingests raw logs, processes them with Spark, flags anomalies, and serves live insights through a web dashboard.
+
+This project demonstrates practical distributed system design: decoupled ingestion, scalable compute, persistent analytics storage, and a user-facing observability layer.
+
+## Why this project matters
+
+- Handles large log ingestion through object storage instead of API server memory.
+- Processes data in a Spark cluster rather than single-node scripts.
+- Separates responsibilities across frontend, API, compute, and storage layers.
+- Provides operationally useful outputs: traffic trends, status code breakdown, and anomaly alerts.
 
 ## Demo
 
-- Upload access logs from the frontend dashboard.
-- Backend streams file directly to MinIO (no local disk staging).
-- Spark job computes per-minute traffic and anomaly signals.
-- Processed results are written to MongoDB and visualized on charts + alerts table.
+- Upload access logs from the frontend.
+- Backend streams files to MinIO (S3-compatible object storage).
+- Spark computes per-minute metrics and anomaly signals.
+- Results are stored in MongoDB and visualized in dashboard charts and alert tables.
 
 ### Quick smoke run
 
 1. Start services (sections below).
 2. Upload `data/sample_nginx_logs.txt` or `data/sample_app_logs.json`.
 3. Click **Upload and Analyze**.
-4. Refresh dashboard to view `Traffic over Time`, status distribution, and anomalies.
+4. View traffic trends, status distribution, and anomalies on the dashboard.
 
 ## Architecture
 
-- **Frontend (`frontend/`)**: Upload logs and visualize analytics/anomalies.
-- **Backend (`backend/`)**: Streams uploads to MinIO, triggers Spark, serves results from MongoDB.
-- **Spark Jobs (`spark-jobs/`)**: Parses logs, aggregates metrics, detects anomalies via percentile-based outlier logic, writes to MongoDB.
-- **Docker Infra (`docker/`)**: MongoDB + MinIO + Spark Master/Workers for local distributed execution.
+- **Frontend (`frontend/`)**: React dashboard for file upload, charts, and anomaly alerts.
+- **Backend (`backend/`)**: Express API for upload ingestion, job triggering, and analytics queries.
+- **Compute (`spark-jobs/`)**: PySpark pipeline for parsing, aggregation, and anomaly detection.
+- **Storage (`MinIO + MongoDB`)**: Raw log storage in MinIO, processed analytics in MongoDB.
+- **Infrastructure (`docker/`)**: Reproducible local distributed runtime using Docker Compose.
 
 ## System Flow
 
-1. User uploads a log file from React frontend.
-2. Node.js API stores raw file in MinIO bucket `raw-logs`.
-3. API triggers Spark pipeline (`Livy` or `spark-submit` fallback).
-4. Spark parses + aggregates logs and flags anomalies.
-5. Spark writes `log_stats` and `anomalies` into MongoDB.
-6. Dashboard fetches results using `/api/results` and `/api/anomalies`.
+1. User uploads a log file in the frontend.
+2. Backend stores the file in the MinIO `raw-logs` bucket.
+3. Backend triggers Spark processing (`Livy` optional, `spark-submit` fallback included).
+4. Spark parses logs, computes rolling metrics, and detects outliers.
+5. Spark writes output collections (`log_stats`, `anomalies`) to MongoDB.
+6. Frontend fetches analytics from API endpoints and renders visualizations.
 
 ## Folder Layout
 
-- `docker/docker-compose.yml` – MongoDB, MinIO, Spark cluster
-- `docker/spark-submit.sh` – helper for local Spark submission
-- `backend/` – Express API + Mongoose models
-- `frontend/` – Vite React dashboard
-- `spark-jobs/` – PySpark ETL + ML pipeline
-- `data/` – sample logs
+- `docker/docker-compose.yml` – Local distributed infrastructure.
+- `docker/spark-submit.sh` – Helper script to execute Spark jobs.
+- `backend/` – Node.js API, controllers, models, routes.
+- `frontend/` – React app (upload + dashboard UI).
+- `spark-jobs/` – PySpark processing modules and entrypoint.
+- `data/` – Sample log files for quick testing.
 
 ## Prerequisites
 
@@ -60,7 +70,7 @@ Optional: copy `docker/.env.example` values into a root-level `.env` file to ove
 Verify:
 - Containers are healthy via `docker compose -f docker/docker-compose.yml ps`
 - MinIO bucket initialization is handled by the `minio-init` service
-- Service ports and credentials come from your environment configuration
+- Runtime ports and credentials are environment-driven
 
 ## 2) Backend Setup
 
@@ -109,14 +119,22 @@ bash docker/spark-submit.sh uploads/sample_nginx_logs.txt
 
 > On Windows PowerShell without bash, run the equivalent `docker compose ... spark-submit` command manually.
 
-## Spark Pipeline Details
+## Data Processing Details
 
 - `jobs/log_parser.py`: Regex parsing for Nginx/Apache logs + JSON log parser path
 - `jobs/stats_aggregator.py`: Per-minute traffic + status distribution
 - `jobs/anomaly_detector.py`: Statistical outlier detection (95th percentile thresholds)
 - `main.py`: Orchestrates read (`s3a://raw-logs/...`) -> transform -> write
 
-## Resume Highlights
+## Tech Stack
+
+- Frontend: React, Vite, Axios, Recharts, React Dropzone
+- Backend: Node.js, Express, Multer, Mongoose, MinIO SDK
+- Data Processing: PySpark (Spark SQL/DataFrame APIs)
+- Storage: MinIO (S3-compatible), MongoDB
+- Infrastructure: Docker Compose, Spark master + workers
+
+## Portfolio Highlights
 
 - Distributed data pipeline with Spark cluster + object storage + NoSQL sink.
 - Production-style decoupling: upload service, compute service, and dashboard service.
